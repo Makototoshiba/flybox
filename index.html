@@ -344,6 +344,10 @@
     ::selection { background: #c8e1ff;}
     ::placeholder { color:#b7c9e4; }
   </style>
+  <!-- Firebase App (the core SDK) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <!-- Firestore -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 </head>
 <body>
 <header>
@@ -429,6 +433,19 @@
   </form>
 </main>
 <script>
+  // Firebase config — если что, поменяй на свой!
+  const firebaseConfig = {
+    apiKey: "AIzaSyC5t91cmBOW32wEWwGqBtxENtkY0N5iUQ4",
+    authDomain: "flybox-20d0e.firebaseapp.com",
+    projectId: "flybox-20d0e",
+    storageBucket: "flybox-20d0e.appspot.com",
+    messagingSenderId: "821589622583",
+    appId: "1:821589622583:web:52d921033b74ea61b264b2",
+    measurementId: "G-K72Q65D2FN"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
+
   // Modal logic
   function openAddModal() {
     document.getElementById('modalAddForm').reset();
@@ -449,16 +466,21 @@
     document.getElementById('filter-sender').classList.toggle('active', type === 'sender');
     renderAds();
   }
-  // LocalStorage
+  // FIREBASE: Загрузка объявлений
   let ads = [];
-  function loadAds() {
-    const raw = localStorage.getItem('flybox_ads');
-    ads = raw ? JSON.parse(raw) : [];
+  async function loadAds() {
+    const querySnapshot = await db.collection("ads").orderBy("created", "desc").get();
+    ads = [];
+    querySnapshot.forEach((doc) => {
+      ads.push(doc.data());
+    });
   }
-  function saveAds() {
-    localStorage.setItem('flybox_ads', JSON.stringify(ads));
+  // FIREBASE: Добавление объявления
+  async function saveAd(ad) {
+    await db.collection("ads").add(ad);
   }
-  function addAdModal(e) {
+  // Модалка: добавить объявление
+  async function addAdModal(e) {
     e.preventDefault();
     const type = document.getElementById('modalType').value;
     const from = document.getElementById('modalFrom').value.trim();
@@ -471,14 +493,15 @@
       alert('Заполните все обязательные поля!');
       return;
     }
-    ads.push({ type, from, to, date, weight, desc, contact, created: Date.now() });
-    saveAds();
+    const ad = { type, from, to, date, weight, desc, contact, created: Date.now() };
+    await saveAd(ad);
     closeAddModal();
-    renderAds();
+    await renderAds();
     alert('Объявление добавлено!');
   }
-  function renderAds() {
-    loadAds();
+  // Отрисовка объявлений
+  async function renderAds() {
+    await loadAds();
     const container = document.getElementById('ads');
     const searchText = document.getElementById('searchInput').value.trim().toLowerCase();
     let filtered = ads
@@ -522,7 +545,7 @@
       .then(() => alert(`Контакт скопирован:\n${contactText}`))
       .catch(() => alert('Не удалось скопировать контакт'));
   }
-  window.onload = renderAds;
+  window.onload = () => { renderAds(); };
 </script>
 </body>
 </html>
